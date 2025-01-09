@@ -5,6 +5,7 @@ import sendMail from "../middlewares/sendMail.js";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
 import { fileURLToPath } from "url";
+import bcrypt from "bcryptjs";
 
 const isValidPostalID = async (postalID) => {
   const __filename = fileURLToPath(import.meta.url);
@@ -53,10 +54,11 @@ export const loginUser = async (req, res) => {
     let user = await User.findOne({ postalID });
     if (!user) {
       if (password) {
+        const hashedPassword=await bcrypt.hash(password,10);
         user = await User.create({
           email,
           postalID,
-          password,
+          password:hashedPassword,
           postOfficeName,
           empID,
         });
@@ -69,6 +71,7 @@ export const loginUser = async (req, res) => {
         });
       }
     } else {
+      const passwordMatch = await bcrypt.compare(password, user.password);
       if (empID !== user.empID) {
         res.status(500).json({
           message: "Employee ID does not match for given Email ID",
@@ -77,7 +80,7 @@ export const loginUser = async (req, res) => {
         res.status(500).json({
           message: "Post Office Name does not match for given Email ID",
         });
-      } else if (password !== user.password) {
+      } else if (!passwordMatch) {
         res.status(500).json({
           message: "Password does not match for given Email ID",
         });
